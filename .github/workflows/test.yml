@@ -2,7 +2,8 @@ name: Test LINE Push
 
 on:
   workflow_dispatch:
-
+  schedule:
+    - cron: "0 23 * * *"  # 毎日23時（日本時間）
 jobs:
   test:
     runs-on: ubuntu-latest
