@@ -11,7 +11,6 @@ headers = {
 }
 
 data = {
-    "to": USER_ID,
     "messages": [
         {
             "type": "text",
