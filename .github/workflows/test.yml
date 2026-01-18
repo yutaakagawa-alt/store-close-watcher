@@ -18,3 +18,4 @@ jobs:
         run: |
           pip install requests beautifulsoup4
           python search_watch.py
+          python x_watch.py
