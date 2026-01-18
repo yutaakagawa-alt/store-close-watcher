@@ -1,106 +1,82 @@
 import requests
-from bs4 import BeautifulSoup
 import os
-import json
+import subprocess
+from bs4 import BeautifulSoup
 
-# =========================
-# 設定
-# =========================
+SEARCH_URL = "https://duckduckgo.com/html/"
 QUERY = "閉店"
-MAX_RESULTS = 10
-SAVE_FILE = "last_results.txt"
+MAX_RESULTS = 5
+SENT_FILE = "sent_urls.txt"
 
-DUCK_URL = "https://lite.duckduckgo.com/lite/"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
+LINE_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
-LINE_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
-LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
-USER_ID = os.environ.get("LINE_USER_ID")
+def load_sent_urls():
+    if not os.path.exists(SENT_FILE):
+        return set()
+    with open(SENT_FILE, "r", encoding="utf-8") as f:
+        return set(line.strip() for line in f if line.strip())
 
-# =========================
-# DuckDuckGo 検索
-# =========================
-response = requests.post(
-    DUCK_URL,
-    data={"q": QUERY},
-    headers=HEADERS,
-    timeout=20
+def save_sent_urls(urls):
+    with open(SENT_FILE, "w", encoding="utf-8") as f:
+        for url in sorted(urls):
+            f.write(url + "\n")
+
+def send_line(message):
+    url = "https://api.line.me/v2/bot/message/broadcast"
+    headers = {
+        "Authorization": f"Bearer {LINE_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messages": [{"type": "text", "text": message}]
+    }
+    requests.post(url, headers=headers, json=data)
+
+print("Searching DuckDuckGo...")
+
+res = requests.post(
+    SEARCH_URL,
+    data={"q": QUERY, "kl": "jp-jp"},
+    headers={"User-Agent": "Mozilla/5.0"}
 )
 
-print("HTTP STATUS:", response.status_code)
-html = response.text
-print("HTML LENGTH:", len(html))
+print("HTTP STATUS:", res.status_code)
+print("HTML LENGTH:", len(res.text))
 
-soup = BeautifulSoup(html, "html.parser")
+soup = BeautifulSoup(res.text, "html.parser")
 
-links = []
-for a in soup.select("a.result-link"):
+results = []
+for a in soup.select("a.result__a"):
     title = a.get_text(strip=True)
     link = a.get("href")
-    if title and link:
-        links.append((title, link))
+    if link:
+        results.append((title, link))
+    if len(results) >= MAX_RESULTS:
+        break
+
+sent_urls = load_sent_urls()
+new_items = [(t, l) for t, l in results if l not in sent_urls]
 
 print("DuckDuckGo results:")
-for title, link in links[:MAX_RESULTS]:
-    print(f"- {title}")
-    print(f"  {link}")
+for t, l in results:
+    print("-", t)
+    print(" ", l)
 
-# =========================
-# 前回結果の読み込み
-# =========================
-old_links = set()
-if os.path.exists(SAVE_FILE):
-    with open(SAVE_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            old_links.add(line.strip())
+if not new_items:
+    print("新規URLなし。送信しません。")
+    exit(0)
 
-# =========================
-# 差分検出
-# =========================
-current_links = set(link for _, link in links[:MAX_RESULTS])
-new_links = current_links - old_links
+message = "【新規 閉店情報】\n"
+for t, l in new_items:
+    message += f"\n{t}\n{l}\n"
+    sent_urls.add(l)
 
-print("----")
-if new_links:
-    print("NEW RESULTS:")
-    for link in new_links:
-        print(link)
-else:
-    print("（新着なし）")
+send_line(message)
+save_sent_urls(sent_urls)
 
-# =========================
-# LINE 通知
-# =========================
-if new_links and LINE_TOKEN and USER_ID:
-    message = "【閉店 新着検出】\n" + "\n".join(new_links)
-
-    payload = {
-        "to": USER_ID,
-        "messages": [
-            {"type": "text", "text": message}
-        ]
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {LINE_TOKEN}"
-    }
-
-    r = requests.post(
-        LINE_PUSH_URL,
-        headers=headers,
-        data=json.dumps(payload)
-    )
-
-    print("LINE PUSH STATUS:", r.status_code)
-else:
-    print("LINE送信なし（新着なし or 環境変数未設定）")
-
-# =========================
-# 今回結果を保存
-# =========================
-with open(SAVE_FILE, "w", encoding="utf-8") as f:
-    for link in current_links:
-        f.write(link + "\n")
+# GitHubに保存
+subprocess.run(["git", "config", "--global", "user.name", "github-actions"])
+subprocess.run(["git", "config", "--global", "user.email", "actions@github.com"])
+subprocess.run(["git", "add", SENT_FILE])
+subprocess.run(["git", "commit", "-m", "Update sent URLs"])
+subprocess.run(["git", "push"])
