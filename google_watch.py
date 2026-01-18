@@ -23,6 +23,10 @@ for e in elements:
     href = e.get_attribute("href")
     if href and "http" in href and "google" not in href:
         links.add(href)
+        
+print("HTML LENGTH:", len(driver.page_source))
+print(driver.page_source[:500])
+print("PAGE TITLE:", driver.title)
 
 driver.quit()
 
