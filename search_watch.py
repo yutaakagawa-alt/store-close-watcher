@@ -5,17 +5,17 @@ from bs4 import BeautifulSoup
 QUERY = "閉店 店舗"
 MAX_RESULTS = 10
 
-# DuckDuckGo HTML版（重要）
-URL = "https://duckduckgo.com/html/"
+# DuckDuckGo LITE（重要）
+URL = "https://lite.duckduckgo.com/lite/"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
 # ===== 検索実行 =====
-response = requests.get(
+response = requests.post(
     URL,
-    params={"q": QUERY},
+    data={"q": QUERY},
     headers=HEADERS,
     timeout=20
 )
@@ -28,11 +28,11 @@ soup = BeautifulSoup(response.text, "html.parser")
 # ===== 結果抽出 =====
 links = []
 
-for a in soup.select("a.result__a"):
+for a in soup.select("a"):
+    href = a.get("href")
     title = a.get_text(strip=True)
-    link = a.get("href")
-    if title and link:
-        links.append((title, link))
+    if href and title and href.startswith("http"):
+        links.append((title, href))
 
 # ===== 表示 =====
 print("DuckDuckGo results:")
