@@ -14,6 +14,6 @@ jobs:
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
         run: |
-          pip install requests beautifulsoup4
+          pip install selenium
           python x_watch.py
           python google_watch.py
