@@ -14,7 +14,7 @@ query = "TSUTAYA 閉店"
 url = f"https://www.google.com/search?q={query}"
 
 driver.get(url)
-time.sleep(5)
+time.sleep(10)
 
 links = set()
 elements = driver.find_elements(By.XPATH, "//a")
@@ -25,6 +25,8 @@ for e in elements:
         links.add(href)
 
 driver.quit()
+
+print("PAGE TITLE:", driver.title)
 
 print("Google results:")
 for link in list(links)[:10]:
