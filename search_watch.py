@@ -1,18 +1,22 @@
 import requests
 from bs4 import BeautifulSoup
+import os
 
-# ===== 設定 =====
-QUERY = "閉店 店舗"
+# =========================
+# 設定
+# =========================
+QUERY = "閉店"
 MAX_RESULTS = 10
+SAVE_FILE = "last_results.txt"
 
-# DuckDuckGo LITE（重要）
 URL = "https://lite.duckduckgo.com/lite/"
-
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    "User-Agent": "Mozilla/5.0"
 }
 
-# ===== 検索実行 =====
+# =========================
+# DuckDuckGo 検索
+# =========================
 response = requests.post(
     URL,
     data={"q": QUERY},
@@ -21,24 +25,52 @@ response = requests.post(
 )
 
 print("HTTP STATUS:", response.status_code)
-print("HTML LENGTH:", len(response.text))
+html = response.text
+print("HTML LENGTH:", len(html))
 
-soup = BeautifulSoup(response.text, "html.parser")
+soup = BeautifulSoup(html, "html.parser")
 
-# ===== 結果抽出 =====
 links = []
-
-for a in soup.select("a"):
-    href = a.get("href")
+for a in soup.select("a.result-link"):
     title = a.get_text(strip=True)
-    if href and title and href.startswith("http"):
-        links.append((title, href))
+    link = a.get("href")
+    if title and link:
+        links.append((title, link))
 
-# ===== 表示 =====
+# =========================
+# 結果表示
+# =========================
 print("DuckDuckGo results:")
-if not links:
-    print("（結果なし）")
-
 for title, link in links[:MAX_RESULTS]:
     print(f"- {title}")
     print(f"  {link}")
+
+# =========================
+# 前回結果の読み込み
+# =========================
+old_links = set()
+if os.path.exists(SAVE_FILE):
+    with open(SAVE_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            old_links.add(line.strip())
+
+# =========================
+# 今回結果との差分
+# =========================
+current_links = set(link for _, link in links[:MAX_RESULTS])
+new_links = current_links - old_links
+
+print("----")
+if new_links:
+    print("NEW RESULTS:")
+    for link in new_links:
+        print(link)
+else:
+    print("（新着なし）")
+
+# =========================
+# 今回結果を保存
+# =========================
+with open(SAVE_FILE, "w", encoding="utf-8") as f:
+    for link in current_links:
+        f.write(link + "\n")
