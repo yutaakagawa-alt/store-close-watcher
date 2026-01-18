@@ -1,31 +1,38 @@
 import requests
 from bs4 import BeautifulSoup
 
-QUERY = "閉店 お知らせ 店舗"
+QUERY = "閉店"
 MAX_RESULTS = 10
 
-url = "https://duckduckgo.com/html/"
+url = "https://html.duckduckgo.com/html/"
 params = {
-    "q": QUERY,
-    "kl": "jp-jp"
+    "q": QUERY
 }
 
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
-res = requests.post(url, data=params, headers=headers, timeout=15)
-res.raise_for_status()
+# --- ① まず検索ページを取得 ---
+response = requests.post(url, data=params, headers=headers)
+html = response.text
 
-soup = BeautifulSoup(res.text, "html.parser")
+# ★★★ ここに入れる ★★★
+print("HTML LENGTH:", len(html))
+print(html[:500])
+# ★★★ ここまで ★★★
+
+# --- ② HTMLを解析 ---
+soup = BeautifulSoup(html, "html.parser")
 
 links = []
 for a in soup.select("a.result__a"):
-    href = a.get("href")
     title = a.get_text(strip=True)
-    if href:
-        links.append((title, href))
+    link = a.get("href")
+    if title and link:
+        links.append((title, link))
 
+# --- ③ 結果表示 ---
 print("DuckDuckGo results:")
 for title, link in links[:MAX_RESULTS]:
     print(f"- {title}")
