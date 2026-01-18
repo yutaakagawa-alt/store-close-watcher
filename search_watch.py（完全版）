@@ -1,72 +1,32 @@
 import requests
 from bs4 import BeautifulSoup
-import json
-import os
-import time
 
-# =====================
-# 設定
-# =====================
-QUERY = "ChatGPT 自治体 導入"
-MAX_RESULTS = 20
-STATE_FILE = "seen_urls.json"
+QUERY = "閉店 お知らせ 店舗"
+MAX_RESULTS = 10
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; WatchBot/1.0; +https://example.com/bot-info)"
-}
-
-SEARCH_URL = "https://duckduckgo.com/html/"
-
-# =====================
-# 既知URL読み込み
-# =====================
-if os.path.exists(STATE_FILE):
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        seen_urls = set(json.load(f))
-else:
-    seen_urls = set()
-
-# =====================
-# DuckDuckGo 検索
-# =====================
+url = "https://duckduckgo.com/html/"
 params = {
     "q": QUERY,
     "kl": "jp-jp"
 }
 
-time.sleep(1)  # 優しさ
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
 
-response = requests.get(SEARCH_URL, headers=HEADERS, params=params, timeout=15)
-response.raise_for_status()
+res = requests.post(url, data=params, headers=headers, timeout=15)
+res.raise_for_status()
 
-soup = BeautifulSoup(response.text, "html.parser")
+soup = BeautifulSoup(res.text, "html.parser")
 
-# =====================
-# URL 抽出
-# =====================
-links = set()
-
+links = []
 for a in soup.select("a.result__a"):
     href = a.get("href")
-    if href and href.startswith("http"):
-        links.add(href)
-        if len(links) >= MAX_RESULTS:
-            break
+    title = a.get_text(strip=True)
+    if href:
+        links.append((title, href))
 
-# =====================
-# 新規URL判定
-# =====================
-new_links = links - seen_urls
-
-print("=== New Results ===")
-for url in new_links:
-    print(url)
-
-# =====================
-# 状態保存
-# =====================
-seen_urls.update(links)
-with open(STATE_FILE, "w", encoding="utf-8") as f:
-    json.dump(sorted(seen_urls), f, ensure_ascii=False, indent=2)
-
-print(f"\nChecked {len(links)} results, {len(new_links)} new.")
+print("DuckDuckGo results:")
+for title, link in links[:MAX_RESULTS]:
+    print(f"- {title}")
+    print(f"  {link}")
