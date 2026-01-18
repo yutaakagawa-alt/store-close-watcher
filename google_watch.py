@@ -1,19 +1,31 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
 
-query = "TSUTAYA 閉店 福岡"
-URL = f"https://www.google.com/search?q={query}"
+options = Options()
+options.add_argument("--headless")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
 
-res = requests.get(URL, headers={
-    "User-Agent": "Mozilla/5.0"
-})
+driver = webdriver.Chrome(options=options)
 
-soup = BeautifulSoup(res.text, "html.parser")
+query = "TSUTAYA 閉店"
+url = f"https://www.google.com/search?q={query}"
+
+driver.get(url)
+time.sleep(5)
+
+links = set()
+elements = driver.find_elements(By.XPATH, "//a")
+
+for e in elements:
+    href = e.get_attribute("href")
+    if href and "http" in href and "google" not in href:
+        links.add(href)
+
+driver.quit()
 
 print("Google results:")
-for a in soup.select("a"):
-    href = a.get("href", "")
-    if href.startswith("/url?q="):
-        link = href.split("/url?q=")[1].split("&")[0]
-        if "google" not in link:
-            print(link)
+for link in list(links)[:10]:
+    print(link)
